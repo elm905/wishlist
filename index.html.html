@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>위시리스트</title>
+<style>
+  :root{
+    --bg:#F4F7FA;
+    --card:#FCFDFE;
+    --ink:#29323B;
+    --sub:#77828D;
+    --line:#DCE3E9;
+    --accent:#5F7E98;
+    --accent-ink:#FFFFFF;
+    --done:#A0A9B1;
+    --done-bg:#F0F3F5;
+    --danger:#B85C5C;
+  }
+  *{box-sizing:border-box;}
+  html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    min-height:100%; margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:620px;margin:0 auto;padding:34px 20px 70px;}
+  header{margin-bottom:22px;}
+  h1{
+    font-family:Georgia,"Noto Serif KR",serif;
+    font-weight:600;font-size:30px;letter-spacing:-.02em;margin:0;
+  }
+  .sub{display:none;}
+  .badge{
+    display:inline-block;font-size:12px;padding:5px 10px;border-radius:999px;
+    border:1px solid var(--line);color:var(--sub);margin-top:10px;cursor:pointer;
+    background:rgba(255,255,255,.45);
+  }
+  .badge.edit{border-color:var(--accent);color:var(--accent);}
+  .tabs{
+    display:flex;align-items:center;gap:6px;overflow-x:auto;
+    padding:2px 0 11px;margin-bottom:0;scrollbar-width:none;
+    border-bottom:1px solid var(--line);
+  }
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:0 0 auto;border:1px solid var(--line);background:var(--card);
+    color:var(--sub);border-radius:9px;padding:8px 13px;font-size:13.5px;
+    cursor:pointer;font-family:inherit;white-space:nowrap;
+  }
+  .tab.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .tab.add{background:transparent;border:0;padding:8px 9px;font-size:19px;color:var(--accent);}
+  .tab.delete{color:var(--danger);}
+  .tab[contenteditable="true"]{outline:2px solid var(--accent);outline-offset:1px;}
+  .tab-hint{font-size:11px;color:var(--sub);margin:8px 2px 0;}
+  ul{list-style:none;margin:18px 0 0;padding:0;}
+  li.item{
+    display:flex;align-items:flex-start;gap:12px;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:15px 15px;margin-bottom:9px;
+    box-shadow:0 1px 2px rgba(38,50,61,.035);
+  }
+  li.item.done{background:var(--done-bg);border-color:var(--line);}
+  .handle{cursor:grab;color:var(--sub);font-size:15px;line-height:1;padding-top:3px;user-select:none;touch-action:none;}
+  .handle:active{cursor:grabbing;}
+  .chk{
+    appearance:none;-webkit-appearance:none;width:19px;height:19px;min-width:19px;
+    border:1.6px solid var(--sub);border-radius:5px;margin-top:2px;cursor:pointer;position:relative;background:transparent;
+  }
+  .chk:checked{background:var(--accent);border-color:var(--accent);}
+  .chk:checked::after{
+    content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;
+    border:solid var(--accent-ink);border-width:0 2px 2px 0;transform:rotate(45deg);
+  }
+  .body{flex:1;min-width:0;}
+  .title{font-size:15.5px;font-weight:600;word-break:break-word;}
+  li.done .title{color:var(--done);text-decoration:line-through;font-weight:500;}
+  .meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:13px;color:var(--sub);}
+  li.done .meta{color:var(--done);}
+  .meta a{color:inherit;}
+  .del{background:none;border:0;color:var(--sub);font-size:19px;cursor:pointer;padding:0 2px;line-height:1;}
+  .del:hover{color:var(--danger);}
+  .empty{
+    text-align:center;color:var(--sub);padding:52px 10px;border:1px dashed var(--line);
+    border-radius:12px;font-size:14px;line-height:1.6;background:rgba(255,255,255,.35);
+  }
+  .divider{display:none;}
+  form.add{
+    display:flex;flex-direction:column;gap:8px;margin-top:20px;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:14px;
+  }
+  form.add .row{display:flex;gap:8px;}
+  input[type=text],input[type=url]{
+    width:100%;border:1px solid var(--line);border-radius:8px;background:#F8FAFC;
+    color:var(--ink);padding:9px 10px;font-size:14px;font-family:inherit;
+  }
+  input::placeholder{color:var(--sub);}
+  .addbtn{
+    background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;
+    padding:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:2px;
+  }
+  .addbtn:active{opacity:.85;}
+  .viewonly{text-align:center;color:var(--sub);font-size:12.5px;margin-top:24px;}
+  li.dragging{opacity:.4;} li.drag-over{border-color:var(--accent);}
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(30,40,50,.42);display:flex;
+    align-items:center;justify-content:center;padding:20px;z-index:50;
+  }
+  .modal-box{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:20px;width:100%;max-width:340px;box-shadow:0 10px 35px rgba(30,40,50,.12);
+  }
+  .modal-box h3{margin:0 0 4px;font-size:16px;}
+  .modal-box p{margin:0 0 14px;font-size:13px;color:var(--sub);}
+  .modal-box input{margin-bottom:10px;}
+  .modal-err{color:var(--danger);font-size:12.5px;margin:-4px 0 10px;min-height:1em;}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+  .modal-actions button{
+    border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    border-radius:7px;padding:8px 14px;font-size:13.5px;cursor:pointer;font-family:inherit;
+  }
+  .modal-actions button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;}
+  .tab-delete{
+    margin-left:-3px;background:none;border:0;color:currentColor;font-size:12px;
+    cursor:pointer;padding:0 1px;opacity:.65;
+  }
+  .tab-delete:hover{opacity:1;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="listTitle">위시리스트</h1>
+    <p class="sub">갖고 싶은 것들을 모아두는 곳</p>
+    <span class="badge" id="statusBadge"></span>
+  </header>
+  <div id="app"></div>
+</div>
+
+<script id="data-store" type="application/json">{"pinHash":null,"items":[]}</script>
+
+<!-- ===== Firebase 설정: 여기 firebaseConfig 값만 3단계에서 복사한 값으로 바꿔주세요 ===== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot }
+    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCuD5GKNRXy8DYba4K3qbuMNoW06cviBhQ",
+    authDomain: "wishlist-ch000.firebaseapp.com",
+    projectId: "wishlist-ch000",
+    storageBucket: "wishlist-ch000.firebasestorage.app",
+    messagingSenderId: "397776781581",
+    appId: "1:397776781581:web:9d7990cf93ea55bb46f044"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const dbFs = getFirestore(app);
+  const docRef = doc(dbFs, "wishlist", "main");
+
+  window.__firebase = { dbFs, docRef, setDoc, getDoc, onSnapshot };
+</script>
+<!-- ===== 여기까지 ===== -->
+
+<script>
+
+let STATE = JSON.parse(document.getElementById('data-store').textContent || '{"pinHash":null,"items":[]}');
+STATE.tabs = Array.isArray(STATE.tabs) && STATE.tabs.length ? STATE.tabs : ['지갑'];
+STATE.activeTab = STATE.activeTab || STATE.tabs[0];
+(STATE.items || []).forEach(i => { if (!i.tab) i.tab = '지갑'; });
+let canEdit = false;
+let dragId = null;
+const UNLOCK_KEY = 'wishlist_edit_unlocked_v1';
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const items = STATE.items || [];
+  const tabs = STATE.tabs || ['지갑'];
+  if (!STATE.activeTab || !tabs.includes(STATE.activeTab)) STATE.activeTab = tabs[0];
+
+  const visibleItems = items.filter(i => (i.tab || '지갑') === STATE.activeTab);
+  const badge = document.getElementById('statusBadge');
+
+  if (!STATE.pinHash) {
+    badge.textContent = '🔓 편집 잠금이 설정되지 않았어요 · 눌러서 설정';
+    badge.className = 'badge edit'; badge.onclick = setupPin;
+  } else if (canEdit) {
+    badge.textContent = '✏️ 편집 모드 · 눌러서 잠그기';
+    badge.className = 'badge edit'; badge.onclick = lockEdit;
+  } else {
+    badge.textContent = '👀 보기 전용 · 눌러서 편집하기';
+    badge.className = 'badge'; badge.onclick = unlockEdit;
+  }
+
+  let html = `
+    <div class="tabs" id="tabs">
+      ${tabs.map((tab, idx) => `
+        <button class="tab ${tab === STATE.activeTab ? 'active' : ''}" data-tab="${escapeHtml(tab)}">
+          <span class="tab-name">${escapeHtml(tab)}</span>
+          ${canEdit && tabs.length > 1 ? `<button class="tab-delete" type="button" data-delete-tab="${escapeHtml(tab)}" title="탭 삭제">×</button>` : ''}
+        </button>
+      `).join('')}
+      ${canEdit ? '<button class="tab add" id="addTab" type="button" title="탭 추가">+</button>' : ''}
+    </div>
+    ${canEdit ? '<div class="tab-hint">탭 이름을 두 번 클릭하면 이름을 바꿀 수 있어요.</div>' : ''}
+  `;
+
+  if (visibleItems.length === 0) {
+    html += `<div class="empty">이 탭에는 아직 위시가 없어요.${canEdit ? '<br>아래에서 첫 번째 위시를 추가해 보세요.' : ''}</div>`;
+  } else {
+    const unpurchased = visibleItems.filter(i => !i.purchased);
+    const purchased = visibleItems.filter(i => i.purchased);
+    html += '<ul id="listUnpurchased">';
+    unpurchased.forEach(item => { html += itemHtml(item, true); });
+    html += '</ul>';
+    if (purchased.length) {
+      html += '<div class="divider">구매완료</div><ul id="listPurchased">';
+      purchased.forEach(item => { html += itemHtml(item, false); });
+      html += '</ul>';
+    }
+  }
+
+  if (canEdit) {
+    html += `
+      <form class="add" id="addForm">
+        <input type="text" id="fTitle" placeholder="갖고 싶은 것 (필수)" required>
+        <div class="row">
+          <input type="text" id="fPrice" placeholder="가격 (선택)">
+          <input type="url" id="fUrl" placeholder="링크 (선택)">
+        </div>
+        <button type="submit" class="addbtn">추가하기</button>
+      </form>`;
+  } else if (items.length > 0) {
+    html += `<p class="viewonly">이 위시리스트는 보기 전용입니다.</p>`;
+  }
+
+  app.innerHTML = html;
+
+  document.querySelectorAll('.tab[data-tab]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      if (e.target.closest('[data-delete-tab]')) return;
+      STATE.activeTab = btn.dataset.tab;
+      save(); render();
+    });
+    btn.addEventListener('dblclick', e => {
+      if (!canEdit) return;
+      e.preventDefault();
+      const nameEl = btn.querySelector('.tab-name');
+      const oldName = btn.dataset.tab;
+      const input = document.createElement('input');
+      input.type = 'text'; input.value = oldName; input.maxLength = 20;
+      input.style.cssText = 'font:inherit;border:0;outline:0;background:transparent;color:inherit;width:100px;';
+      nameEl.replaceWith(input); input.focus(); input.select();
+      const finish = async () => {
+        const newName = input.value.trim() || oldName;
+        if (newName !== oldName && !STATE.tabs.includes(newName)) {
+          STATE.tabs = STATE.tabs.map(t => t === oldName ? newName : t);
+          STATE.items.forEach(i => { if ((i.tab || '지갑') === oldName) i.tab = newName; });
+          if (STATE.activeTab === oldName) STATE.activeTab = newName;
+          await save();
+        }
+        render();
+      };
+      input.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') finish();
+        if (ev.key === 'Escape') render();
+      });
+      input.addEventListener('blur', finish, {once:true});
+    });
+  });
+
+  document.querySelectorAll('[data-delete-tab]').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const name = btn.dataset.deleteTab;
+      if (STATE.tabs.length <= 1) return;
+      const replacement = STATE.tabs.find(t => t !== name);
+      STATE.tabs = STATE.tabs.filter(t => t !== name);
+      STATE.items.forEach(i => { if ((i.tab || '지갑') === name) i.tab = replacement; });
+      if (STATE.activeTab === name) STATE.activeTab = replacement;
+      await save(); render();
+    });
+  });
+
+  const addTab = document.getElementById('addTab');
+  if (addTab) addTab.addEventListener('click', async () => {
+    let n = 1, name = `새 탭 ${n}`;
+    while (STATE.tabs.includes(name)) { n++; name = `새 탭 ${n}`; }
+    STATE.tabs.push(name);
+    STATE.activeTab = name;
+    await save(); render();
+    const btn = [...document.querySelectorAll('.tab[data-tab]')].find(b => b.dataset.tab === name);
+    if (btn) btn.dispatchEvent(new MouseEvent('dblclick', {bubbles:true}));
+  });
+
+  if (document.getElementById('addForm')) document.getElementById('addForm').addEventListener('submit', onAdd);
+  bindItemEvents();
+}
+
+function itemHtml(item, draggable){
+  const metaParts = [];
+  if (item.price) metaParts.push(escapeHtml(item.price));
+  if (item.url) metaParts.push(`<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">링크 보기</a>`);
+  const meta = metaParts.length ? `<div class="meta">${metaParts.join(' · ')}</div>` : '';
+  return `
+    <li class="item ${item.purchased ? 'done' : ''}" data-id="${item.id}" ${draggable && canEdit ? 'draggable="true"' : ''}>
+      ${draggable && canEdit ? '<span class="handle">⠿</span>' : '<span style="width:15px"></span>'}
+      <input type="checkbox" class="chk" ${item.purchased ? 'checked' : ''} ${canEdit ? '' : 'disabled'}>
+      <div class="body">
+        <div class="title">${escapeHtml(item.title)}</div>
+        ${meta}
+      </div>
+      ${canEdit ? '<button class="del" title="삭제">×</button>' : ''}
+    </li>`;
+}
+
+function bindItemEvents(){
+  document.querySelectorAll('li.item').forEach(li => {
+    const id = li.dataset.id;
+    const chk = li.querySelector('.chk');
+    const del = li.querySelector('.del');
+    if (canEdit && chk) chk.addEventListener('change', () => togglePurchased(id));
+    if (canEdit && del) del.addEventListener('click', () => removeItem(id));
+    if (canEdit && li.draggable) {
+      li.addEventListener('dragstart', () => { dragId = id; li.classList.add('dragging'); });
+      li.addEventListener('dragend', () => { li.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(e=>e.classList.remove('drag-over')); save(); });
+      li.addEventListener('dragover', e => { e.preventDefault(); li.classList.add('drag-over'); });
+      li.addEventListener('dragleave', () => li.classList.remove('drag-over'));
+      li.addEventListener('drop', e => {
+        e.preventDefault();
+        li.classList.remove('drag-over');
+        if (!dragId || dragId === id) return;
+        reorder(dragId, id);
+      });
+    }
+  });
+}
+
+function reorder(fromId, toId){
+  const items = STATE.items;
+  const fromIdx = items.findIndex(i => i.id === fromId);
+  const toIdx = items.findIndex(i => i.id === toId);
+  if (fromIdx === -1 || toIdx === -1) return;
+  const [moved] = items.splice(fromIdx, 1);
+  items.splice(toIdx, 0, moved);
+  render();
+}
+
+function togglePurchased(id){
+  const item = STATE.items.find(i => i.id === id);
+  if (!item) return;
+  item.purchased = !item.purchased;
+  render();
+  save();
+}
+
+function removeItem(id){
+  STATE.items = STATE.items.filter(i => i.id !== id);
+  render();
+  save();
+}
+
+function onAdd(e){
+  e.preventDefault();
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) return;
+  const price = document.getElementById('fPrice').value.trim();
+  const url = document.getElementById('fUrl').value.trim();
+  STATE.items.unshift({ id: uid(), title, price, url, purchased: false, tab: STATE.activeTab || '지갑' });
+  render();
+  save();
+}
+
+function openModal({ title, desc, confirmLabel, onConfirm }){
+  document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h3>${title}</h3>
+      <p>${desc}</p>
+      <input type="password" id="modalPin" placeholder="비밀번호">
+      <div class="modal-err" id="modalErr"></div>
+      <div class="modal-actions">
+        <button type="button" id="modalCancel">취소</button>
+        <button type="button" id="modalOk" class="primary">${confirmLabel}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#modalPin');
+  const err = overlay.querySelector('#modalErr');
+  input.focus();
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('#modalCancel').addEventListener('click', close);
+  const submit = async () => {
+    const val = input.value.trim();
+    if (!val) { err.textContent = '비밀번호를 입력해주세요.'; return; }
+    const ok = await onConfirm(val);
+    if (ok) { close(); } else { err.textContent = '비밀번호가 맞지 않아요.'; input.value=''; input.focus(); }
+  };
+  overlay.querySelector('#modalOk').addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+}
+
+function setupPin(){
+  openModal({
+    title: '편집 비밀번호 설정',
+    desc: '나만 알아야 하는 비밀번호를 정해주세요. 이후 이 비밀번호로만 편집할 수 있어요.',
+    confirmLabel: '설정하기',
+    onConfirm: async (pin) => {
+      STATE.pinHash = await sha256(pin);
+      canEdit = true;
+      localStorage.setItem(UNLOCK_KEY, '1');
+      render();
+      save();
+      return true;
+    }
+  });
+}
+
+function unlockEdit(){
+  openModal({
+    title: '편집하기',
+    desc: '편집하려면 비밀번호를 입력하세요.',
+    confirmLabel: '확인',
+    onConfirm: async (pin) => {
+      const hash = await sha256(pin);
+      if (hash === STATE.pinHash) {
+        canEdit = true;
+        localStorage.setItem(UNLOCK_KEY, '1');
+        render();
+        return true;
+      }
+      return false;
+    }
+  });
+}
+
+function lockEdit(){
+  canEdit = false;
+  localStorage.removeItem(UNLOCK_KEY);
+  render();
+}
+
+async function save(){
+  document.getElementById('data-store').textContent = JSON.stringify(STATE);
+  const fb = window.__firebase;
+  if (!fb) { console.warn('Firebase가 아직 로드되지 않았어요.'); return; }
+  try {
+    await fb.setDoc(fb.docRef, STATE);
+  } catch (err) {
+    console.warn('save failed', err);
+    toast && toast('저장 실패: ' + (err.message || err.code || '알 수 없는 오류'));
+  }
+}
+
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2A2723;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:100;max-width:88%;text-align:center;';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+let applyingRemote = false;
+
+async function init(){
+  // Firebase 모듈 스크립트가 로드될 때까지 잠깐 기다림
+  let tries = 0;
+  while (!window.__firebase && tries < 50) { await new Promise(r => setTimeout(r, 100)); tries++; }
+  const fb = window.__firebase;
+  if (!fb) { render(); return; }
+
+  try {
+    const snap = await fb.getDoc(fb.docRef);
+    if (snap.exists()) {
+      STATE = snap.data();
+      STATE.tabs = Array.isArray(STATE.tabs) && STATE.tabs.length ? STATE.tabs : ['지갑'];
+      STATE.activeTab = STATE.activeTab || STATE.tabs[0];
+      (STATE.items || []).forEach(i => { if (!i.tab) i.tab = '지갑'; });
+      await fb.setDoc(fb.docRef, STATE);
+    } else {
+      await fb.setDoc(fb.docRef, STATE);
+    }
+  } catch (err) {
+    console.warn('initial load failed', err);
+  }
+
+  if (STATE.pinHash && localStorage.getItem(UNLOCK_KEY) === '1') {
+    canEdit = true;
+  }
+  render();
+
+  // 실시간 동기화: 다른 사람이 바꾸면 자동으로 화면 갱신
+  fb.onSnapshot(fb.docRef, snap => {
+    if (!snap.exists()) return;
+    applyingRemote = true;
+    STATE = snap.data();
+    STATE.tabs = Array.isArray(STATE.tabs) && STATE.tabs.length ? STATE.tabs : ['지갑'];
+    STATE.activeTab = STATE.activeTab || STATE.tabs[0];
+    (STATE.items || []).forEach(i => { if (!i.tab) i.tab = '지갑'; });
+    render();
+    applyingRemote = false;
+  });
+}
+
+render();
+init();
+</script>
+</body>
+</html>
