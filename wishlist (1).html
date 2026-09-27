@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>위시리스트</title>
+<style>
+  :root{
+    --bg:#FBF9F4; --card:#FFFFFF; --ink:#2A2723; --sub:#726C63;
+    --line:#E7E1D5; --accent:#3D6B5C; --accent-ink:#FFFFFF;
+    --done:#A39D91; --done-bg:#F1EEE6;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#33312D; --card:#3D3A35; --ink:#F3EFE6; --sub:#BDB6A8;
+      --line:#4D4A43; --accent:#6FA891; --accent-ink:#15251F;
+      --done:#8A8578; --done-bg:#37342F;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#33312D; --card:#3D3A35; --ink:#F3EFE6; --sub:#BDB6A8;
+    --line:#4D4A43; --accent:#6FA891; --accent-ink:#15251F;
+    --done:#8A8578; --done-bg:#37342F;
+  }
+  html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+  *{box-sizing:border-box;}
+  body{
+    height:100%; margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:560px; margin:0 auto; padding:44px 20px 80px; position:relative;}
+  header{margin-bottom:28px;}
+  h1{
+    font-family:Georgia,"Noto Serif KR",serif;
+    font-weight:600; font-size:32px; letter-spacing:-0.01em; margin:0 0 6px;
+  }
+  .sub{color:var(--sub); font-size:14px; margin:0;}
+  .badge{
+    display:inline-block; font-size:12px; padding:3px 9px; border-radius:100px;
+    border:1px solid var(--line); color:var(--sub); margin-top:12px; cursor:pointer;
+  }
+  .badge.edit{ border-color:var(--accent); color:var(--accent); }
+  ul{list-style:none; margin:24px 0 0; padding:0;}
+  li.item{
+    display:flex; align-items:flex-start; gap:12px;
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:14px 14px; margin-bottom:8px;
+  }
+  li.item.done{ background:var(--done-bg); border-color:var(--line); }
+  .handle{
+    cursor:grab; color:var(--sub); font-size:15px; line-height:1; padding-top:3px; user-select:none;
+    touch-action:none;
+  }
+  .handle:active{cursor:grabbing;}
+  .chk{
+    appearance:none; -webkit-appearance:none; width:19px; height:19px; min-width:19px;
+    border:1.6px solid var(--sub); border-radius:5px; margin-top:2px; cursor:pointer; position:relative;
+  }
+  .chk:checked{ background:var(--accent); border-color:var(--accent); }
+  .chk:checked::after{
+    content:""; position:absolute; left:5px; top:1px; width:5px; height:10px;
+    border:solid var(--accent-ink); border-width:0 2px 2px 0; transform:rotate(45deg);
+  }
+  .body{flex:1; min-width:0;}
+  .title{font-size:15.5px; font-weight:600; word-break:break-word;}
+  li.done .title{ color:var(--done); text-decoration:line-through; font-weight:500; }
+  .meta{display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; font-size:13px; color:var(--sub);}
+  li.done .meta{ color:var(--done); }
+  .meta a{color:inherit;}
+  .del{
+    background:none; border:none; color:var(--sub); font-size:18px; cursor:pointer;
+    padding:0 2px; line-height:1;
+  }
+  .del:hover{color:#C1503F;}
+  .empty{
+    text-align:center; color:var(--sub); padding:50px 10px; border:1px dashed var(--line);
+    border-radius:10px; font-size:14px; line-height:1.6;
+  }
+  .divider{ display:flex; align-items:center; gap:10px; margin:22px 0 10px; color:var(--sub); font-size:12.5px;}
+  .divider::before, .divider::after{content:""; flex:1; height:1px; background:var(--line);}
+  form.add{
+    display:flex; flex-direction:column; gap:8px; margin-top:22px; background:var(--card);
+    border:1px solid var(--line); border-radius:10px; padding:14px;
+  }
+  form.add .row{display:flex; gap:8px;}
+  input[type=text], input[type=url]{
+    width:100%; border:1px solid var(--line); border-radius:7px; background:var(--bg);
+    color:var(--ink); padding:9px 10px; font-size:14px; font-family:inherit;
+  }
+  input::placeholder{color:var(--sub);}
+  .addbtn{
+    background:var(--accent); color:var(--accent-ink); border:none; border-radius:7px;
+    padding:10px; font-size:14px; font-weight:600; cursor:pointer; margin-top:2px;
+  }
+  .addbtn:active{opacity:.85;}
+  .viewonly{ text-align:center; color:var(--sub); font-size:12.5px; margin-top:26px; }
+  li.dragging{ opacity:.4; }
+  li.drag-over{ border-color:var(--accent); }
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex;
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .modal-box{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:20px; width:100%; max-width:340px;
+  }
+  .modal-box h3{ margin:0 0 4px; font-size:16px; }
+  .modal-box p{ margin:0 0 14px; font-size:13px; color:var(--sub); }
+  .modal-box input{ margin-bottom:10px; }
+  .modal-err{ color:#C1503F; font-size:12.5px; margin:-4px 0 10px; min-height:1em; }
+  .modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
+  .modal-actions button{
+    border:1px solid var(--line); background:var(--bg); color:var(--ink);
+    border-radius:7px; padding:8px 14px; font-size:13.5px; cursor:pointer; font-family:inherit;
+  }
+  .modal-actions button.primary{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="listTitle">위시리스트</h1>
+    <p class="sub">갖고 싶은 것들을 모아두는 곳</p>
+    <span class="badge" id="statusBadge"></span>
+  </header>
+  <div id="app"></div>
+</div>
+
+<script id="data-store" type="application/json">{"pinHash":null,"items":[]}</script>
+
+<!-- ===== Firebase 설정: 여기 firebaseConfig 값만 3단계에서 복사한 값으로 바꿔주세요 ===== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot }
+    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCuD5GKNRXy8DYba4K3qbuMNoW06cviBhQ",
+    authDomain: "wishlist-ch000.firebaseapp.com",
+    projectId: "wishlist-ch000",
+    storageBucket: "wishlist-ch000.firebasestorage.app",
+    messagingSenderId: "397776781581",
+    appId: "1:397776781581:web:9d7990cf93ea55bb46f044"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const dbFs = getFirestore(app);
+  const docRef = doc(dbFs, "wishlist", "main");
+
+  window.__firebase = { dbFs, docRef, setDoc, getDoc, onSnapshot };
+</script>
+<!-- ===== 여기까지 ===== -->
+
+<script>
+
+let STATE = JSON.parse(document.getElementById('data-store').textContent || '{"pinHash":null,"items":[]}');
+let canEdit = false;
+let dragId = null;
+const UNLOCK_KEY = 'wishlist_edit_unlocked_v1';
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const items = STATE.items;
+  const unpurchased = items.filter(i => !i.purchased);
+  const purchased = items.filter(i => i.purchased);
+  const badge = document.getElementById('statusBadge');
+
+  if (!STATE.pinHash) {
+    badge.textContent = '🔓 편집 잠금이 설정되지 않았어요 · 눌러서 설정';
+    badge.className = 'badge edit';
+    badge.onclick = setupPin;
+  } else if (canEdit) {
+    badge.textContent = '✏️ 편집 모드 · 눌러서 잠그기';
+    badge.className = 'badge edit';
+    badge.onclick = lockEdit;
+  } else {
+    badge.textContent = '👀 보기 전용 · 눌러서 편집하기';
+    badge.className = 'badge';
+    badge.onclick = unlockEdit;
+  }
+
+  if (items.length === 0) {
+    app.innerHTML = `<div class="empty">아직 담긴 항목이 없어요.${canEdit ? '<br>아래에서 첫 번째 위시를 추가해 보세요.' : ''}</div>`;
+  } else {
+    let html = '<ul id="listUnpurchased">';
+    unpurchased.forEach(item => { html += itemHtml(item, true); });
+    html += '</ul>';
+    if (purchased.length) {
+      html += '<div class="divider">구매완료</div><ul id="listPurchased">';
+      purchased.forEach(item => { html += itemHtml(item, false); });
+      html += '</ul>';
+    }
+    app.innerHTML = html;
+  }
+
+  if (canEdit) {
+    app.insertAdjacentHTML('beforeend', `
+      <form class="add" id="addForm">
+        <input type="text" id="fTitle" placeholder="갖고 싶은 것 (필수)" required>
+        <div class="row">
+          <input type="text" id="fPrice" placeholder="가격 (선택)">
+          <input type="url" id="fUrl" placeholder="링크 (선택)">
+        </div>
+        <button type="submit" class="addbtn">추가하기</button>
+      </form>
+    `);
+    document.getElementById('addForm').addEventListener('submit', onAdd);
+  } else if (items.length > 0) {
+    app.insertAdjacentHTML('beforeend', `<p class="viewonly">이 위시리스트는 보기 전용입니다.</p>`);
+  }
+
+  bindItemEvents();
+}
+
+function itemHtml(item, draggable){
+  const metaParts = [];
+  if (item.price) metaParts.push(escapeHtml(item.price));
+  if (item.url) metaParts.push(`<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">링크 보기</a>`);
+  const meta = metaParts.length ? `<div class="meta">${metaParts.join(' · ')}</div>` : '';
+  return `
+    <li class="item ${item.purchased ? 'done' : ''}" data-id="${item.id}" ${draggable && canEdit ? 'draggable="true"' : ''}>
+      ${draggable && canEdit ? '<span class="handle">⠿</span>' : '<span style="width:15px"></span>'}
+      <input type="checkbox" class="chk" ${item.purchased ? 'checked' : ''} ${canEdit ? '' : 'disabled'}>
+      <div class="body">
+        <div class="title">${escapeHtml(item.title)}</div>
+        ${meta}
+      </div>
+      ${canEdit ? '<button class="del" title="삭제">×</button>' : ''}
+    </li>`;
+}
+
+function bindItemEvents(){
+  document.querySelectorAll('li.item').forEach(li => {
+    const id = li.dataset.id;
+    const chk = li.querySelector('.chk');
+    const del = li.querySelector('.del');
+    if (canEdit && chk) chk.addEventListener('change', () => togglePurchased(id));
+    if (canEdit && del) del.addEventListener('click', () => removeItem(id));
+    if (canEdit && li.draggable) {
+      li.addEventListener('dragstart', () => { dragId = id; li.classList.add('dragging'); });
+      li.addEventListener('dragend', () => { li.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(e=>e.classList.remove('drag-over')); save(); });
+      li.addEventListener('dragover', e => { e.preventDefault(); li.classList.add('drag-over'); });
+      li.addEventListener('dragleave', () => li.classList.remove('drag-over'));
+      li.addEventListener('drop', e => {
+        e.preventDefault();
+        li.classList.remove('drag-over');
+        if (!dragId || dragId === id) return;
+        reorder(dragId, id);
+      });
+    }
+  });
+}
+
+function reorder(fromId, toId){
+  const items = STATE.items;
+  const fromIdx = items.findIndex(i => i.id === fromId);
+  const toIdx = items.findIndex(i => i.id === toId);
+  if (fromIdx === -1 || toIdx === -1) return;
+  const [moved] = items.splice(fromIdx, 1);
+  items.splice(toIdx, 0, moved);
+  render();
+}
+
+function togglePurchased(id){
+  const item = STATE.items.find(i => i.id === id);
+  if (!item) return;
+  item.purchased = !item.purchased;
+  render();
+  save();
+}
+
+function removeItem(id){
+  STATE.items = STATE.items.filter(i => i.id !== id);
+  render();
+  save();
+}
+
+function onAdd(e){
+  e.preventDefault();
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) return;
+  const price = document.getElementById('fPrice').value.trim();
+  const url = document.getElementById('fUrl').value.trim();
+  STATE.items.unshift({ id: uid(), title, price, url, purchased: false });
+  render();
+  save();
+}
+
+function openModal({ title, desc, confirmLabel, onConfirm }){
+  document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h3>${title}</h3>
+      <p>${desc}</p>
+      <input type="password" id="modalPin" placeholder="비밀번호">
+      <div class="modal-err" id="modalErr"></div>
+      <div class="modal-actions">
+        <button type="button" id="modalCancel">취소</button>
+        <button type="button" id="modalOk" class="primary">${confirmLabel}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#modalPin');
+  const err = overlay.querySelector('#modalErr');
+  input.focus();
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('#modalCancel').addEventListener('click', close);
+  const submit = async () => {
+    const val = input.value.trim();
+    if (!val) { err.textContent = '비밀번호를 입력해주세요.'; return; }
+    const ok = await onConfirm(val);
+    if (ok) { close(); } else { err.textContent = '비밀번호가 맞지 않아요.'; input.value=''; input.focus(); }
+  };
+  overlay.querySelector('#modalOk').addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+}
+
+function setupPin(){
+  openModal({
+    title: '편집 비밀번호 설정',
+    desc: '나만 알아야 하는 비밀번호를 정해주세요. 이후 이 비밀번호로만 편집할 수 있어요.',
+    confirmLabel: '설정하기',
+    onConfirm: async (pin) => {
+      STATE.pinHash = await sha256(pin);
+      canEdit = true;
+      localStorage.setItem(UNLOCK_KEY, '1');
+      render();
+      save();
+      return true;
+    }
+  });
+}
+
+function unlockEdit(){
+  openModal({
+    title: '편집하기',
+    desc: '편집하려면 비밀번호를 입력하세요.',
+    confirmLabel: '확인',
+    onConfirm: async (pin) => {
+      const hash = await sha256(pin);
+      if (hash === STATE.pinHash) {
+        canEdit = true;
+        localStorage.setItem(UNLOCK_KEY, '1');
+        render();
+        return true;
+      }
+      return false;
+    }
+  });
+}
+
+function lockEdit(){
+  canEdit = false;
+  localStorage.removeItem(UNLOCK_KEY);
+  render();
+}
+
+async function save(){
+  document.getElementById('data-store').textContent = JSON.stringify(STATE);
+  const fb = window.__firebase;
+  if (!fb) { console.warn('Firebase가 아직 로드되지 않았어요.'); return; }
+  try {
+    await fb.setDoc(fb.docRef, STATE);
+  } catch (err) {
+    console.warn('save failed', err);
+    toast && toast('저장 실패: ' + (err.message || err.code || '알 수 없는 오류'));
+  }
+}
+
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2A2723;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:100;max-width:88%;text-align:center;';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+let applyingRemote = false;
+
+async function init(){
+  // Firebase 모듈 스크립트가 로드될 때까지 잠깐 기다림
+  let tries = 0;
+  while (!window.__firebase && tries < 50) { await new Promise(r => setTimeout(r, 100)); tries++; }
+  const fb = window.__firebase;
+  if (!fb) { render(); return; }
+
+  try {
+    const snap = await fb.getDoc(fb.docRef);
+    if (snap.exists()) {
+      STATE = snap.data();
+    } else {
+      await fb.setDoc(fb.docRef, STATE);
+    }
+  } catch (err) {
+    console.warn('initial load failed', err);
+  }
+
+  if (STATE.pinHash && localStorage.getItem(UNLOCK_KEY) === '1') {
+    canEdit = true;
+  }
+  render();
+
+  // 실시간 동기화: 다른 사람이 바꾸면 자동으로 화면 갱신
+  fb.onSnapshot(fb.docRef, snap => {
+    if (!snap.exists()) return;
+    applyingRemote = true;
+    STATE = snap.data();
+    render();
+    applyingRemote = false;
+  });
+}
+
+render();
+init();
+</script>
+</body>
+</html>
